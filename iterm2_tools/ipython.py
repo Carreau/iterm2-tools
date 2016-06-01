@@ -85,8 +85,7 @@ global status
 status = 0
 
 def last_status(shell):
-    err = shell.last_execution_result.error_before_exec or shell.last_execution_result.error_before_exec
-    return AFTER_OUTPUT.format(command_status=(1 if err else 0))
+    return AFTER_OUTPUT.format(command_status=(0 if shell.last_execution_succeed else 1))
 
 @LazyEvaluate
 def ipython_after_output():
@@ -110,14 +109,21 @@ def load_ipython_extension(ipython):
     else:
         load_ipython_extension_readline(ipython)
 
-def load_ipython_extension_prompt_toolkit(ipython):
-    from IPython.terminal.prompts import Prompts, Token
+
+def wrap_prompts_class(Klass):
+    """Wrap an IPython's Prompt class in order for 
+
+    Prompt to inject correct escape sequences at the right positions for iterm2 shell integrations
+    """
+
+    from IPython.terminal.prompts import Token
 
     # assume PTK handle it, it might not be the case though
     # but there is no way to know for now. 
     ZeroWidthEscape = Token.ZeroWidthEscape
 
-    class ITerm2IPythonPrompt(Prompts):
+
+    class ITerm2IPythonPrompt(Klass):
 
         def in_prompt_tokens(self, cli=None):
             return  [
@@ -127,13 +133,12 @@ def load_ipython_extension_prompt_toolkit(ipython):
                     super(ITerm2IPythonPrompt, self).in_prompt_tokens(cli)+\
                     [(ZeroWidthEscape, AFTER_PROMPT)]
 
-        def out_prompt_tokens(self):
-            return [
-                (Token.OutPrompt, 'Out['),
-                (Token.OutPromptNum, str(self.shell.execution_count)),
-                (Token.OutPrompt, ']: ')]
 
-    ipython.prompts = ITerm2IPythonPrompt(ipython)
+
+def load_ipython_extension_prompt_toolkit(ipython):
+
+    from IPython.terminal.prompts import Prompts
+    ipython.prompts = wrap_prompts_class(Prompts)(ipython)
 
 
 def load_ipython_extension_readline(ipython):
