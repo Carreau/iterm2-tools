@@ -84,6 +84,10 @@ from .shell_integration import (BEFORE_PROMPT, AFTER_PROMPT, before_output,
 global status
 status = 0
 
+def last_status(shell):
+    err = shell.last_execution_result.error_before_exec or shell.last_execution_result.error_before_exec
+    return AFTER_OUTPUT.format(command_status=(1 if err else 0))
+
 @LazyEvaluate
 def ipython_after_output():
     global status
@@ -101,6 +105,38 @@ def exc_handler(self, etype, value, tb, tb_offset=None):
 # (despite what the IPython docs say), unless the user calls %reload_ext,
 # which does a full module reload, in which case they are on their own.
 def load_ipython_extension(ipython):
+    if hasattr(ipython, 'prompts'):
+        load_ipython_extension_prompt_toolkit(ipython)
+    else:
+        load_ipython_extension_readline(ipython)
+
+def load_ipython_extension_prompt_toolkit(ipython):
+    from IPython.terminal.prompts import Prompts, Token
+
+    # assume PTK handle it, it might not be the case though
+    # but there is no way to know for now. 
+    ZeroWidthEscape = Token.ZeroWidthEscape
+
+    class ITerm2IPythonPrompt(Prompts):
+
+        def in_prompt_tokens(self, cli=None):
+            return  [
+                     (ZeroWidthEscape, last_status(self.shell)),
+                     (ZeroWidthEscape, BEFORE_PROMPT),
+                    ]+\
+                    super(ITerm2IPythonPrompt, self).in_prompt_tokens(cli)+\
+                    [(ZeroWidthEscape, AFTER_PROMPT)]
+
+        def out_prompt_tokens(self):
+            return [
+                (Token.OutPrompt, 'Out['),
+                (Token.OutPromptNum, str(self.shell.execution_count)),
+                (Token.OutPrompt, ']: ')]
+
+    ipython.prompts = ITerm2IPythonPrompt(ipython)
+
+
+def load_ipython_extension_readline(ipython):
     ipython.prompt_manager.lazy_evaluate_fields['before_prompt'] = readline_invisible(BEFORE_PROMPT)
     ipython.prompt_manager.lazy_evaluate_fields['after_prompt'] = readline_invisible(AFTER_PROMPT)
     ipython.prompt_manager.lazy_evaluate_fields['after_output'] = ipython_after_output
