@@ -12,7 +12,7 @@ matrix:
     - python: "3.5-dev"
     - python: "nightly"
 
-install: "pip install ipython pyflakes"
+install: "pip install ipython==4.1.1 pyflakes==1.0.0"
 
 before_install:
   - pip install coverage==4.0.3 codecov==1.6.3 pytest-cov
