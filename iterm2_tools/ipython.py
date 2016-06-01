@@ -118,10 +118,10 @@ def wrap_prompts_class(Klass):
 
     from IPython.terminal.prompts import Token
 
-    # assume PTK handle it, it might not be the case though
-    # but there is no way to know for now. 
-    ZeroWidthEscape = Token.ZeroWidthEscape
-
+    try : 
+        from  prompt_toolkit.token as ZeroWidthEscape
+    except ImportError:
+        return Klass
 
     class ITerm2IPythonPrompt(Klass):
 
@@ -133,6 +133,7 @@ def wrap_prompts_class(Klass):
                     super(ITerm2IPythonPrompt, self).in_prompt_tokens(cli)+\
                     [(ZeroWidthEscape, AFTER_PROMPT)]
 
+    return ITerm2IPythonPrompt
 
 
 def load_ipython_extension_prompt_toolkit(ipython):
